@@ -1,0 +1,48 @@
+
+name: Build Arisan Friend Jakarta APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '*.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find and extract project
+        run: |
+          ZIP=$(find . -maxdepth 1 -iname '*.zip' | head -n 1)
+          test -n "$ZIP"
+          mkdir source
+          unzip "$ZIP" -d source
+          PROJECT=$(find source -name pubspec.yaml -printf '%h\n' | head -n 1)
+          echo "PROJECT=$PROJECT" >> $GITHUB_ENV
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Prepare Android
+        run: |
+          cd "$PROJECT"
+          flutter create --platforms=android .
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT"
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: arisan-friend-jakarta-apk
+          path: ${{ env.PROJECT }}/build/app/outputs/flutter-apk/app-release.apk
+          
